@@ -26,7 +26,7 @@ Resources:
         Location: !Ref GitHubRepoURL
         BuildSpec: unit-test-buildspec.yaml
       Environment:
-        Type: LINUX_CONTAINER
+        Type: ARM_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
@@ -42,7 +42,7 @@ Resources:
         Location: !Ref GitHubRepoURL
         BuildSpec: integration-test-buildspec.yaml
       Environment:
-        Type: LINUX_CONTAINER
+        Type: ARM_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
@@ -58,7 +58,7 @@ Resources:
         Location: !Ref GitHubRepoURL
         BuildSpec: staging-buildspec.yaml
       Environment:
-        Type: LINUX_CONTAINER
+        Type: ARM_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
@@ -74,7 +74,7 @@ Resources:
         Location: !Ref GitHubRepoURL
         BuildSpec: prod-buildspec.yaml
       Environment:
-        Type: LINUX_CONTAINER
+        Type: ARM_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
