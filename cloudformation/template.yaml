@@ -1,65 +1,166 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template for AWS CodeBuild and AWS CodePipeline resources
-
 Parameters:
   ProjectName:
     Type: String
     Description: The base project name
     Default: pet
-
+  GitHubRepoURL:
+    Type: String
+    Default: https://github.com/jaystu/pet
+Resources:
   CodeBuildProjectUnitTest:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub '${ProjectName}-unit-test'
       Description: CodeBuild project for unit tests
+      Artifacts:
+        Type: no_artifacts
       Source:
         Type: GITHUB
-        Location: !Sub 'https://github.com/jaystu/${ProjectName}'
-        Buildspec: unit-test-buildspec.yaml
+        Location: !Ref GitHubRepoURL
+        BuildSpec: unit-test-buildspec.yaml
       Environment:
+        Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:4.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
-      
-Resources:
   CodeBuildProjectIntegTest:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub '${ProjectName}-integ-test'
       Description: CodeBuild project for integration tests
+      Artifacts:
+        Type: no_artifacts
       Source:
         Type: GITHUB
-        Location: !Sub 'https://github.com/jaystu/${ProjectName}'
-        Buildspec: integration-test-buildspec.yaml
+        Location: !Ref GitHubRepoURL
+        BuildSpec: integration-test-buildspec.yaml
       Environment:
+        Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:4.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
-
   CodeBuildProjectBuildDeployStaging:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub '${ProjectName}-build-deploy-staging'
       Description: CodeBuild project for building and deploying to staging
+      Artifacts:
+        Type: no_artifacts
       Source:
         Type: GITHUB
-        Location: !Sub 'https://github.com/jaystu/${ProjectName}'
-        Buildspec: staging-buildspec.yaml
+        Location: !Ref GitHubRepoURL
+        BuildSpec: staging-buildspec.yaml
       Environment:
+        Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:4.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
-
   CodeBuildProjectBuildDeployProd:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub '${ProjectName}-build-deploy-prod'
       Description: CodeBuild project for building and deploying to production
+      Artifacts:
+        Type: no_artifacts
       Source:
         Type: GITHUB
-        Location: !Sub 'https://github.com/jaystu/${ProjectName}'
-        Buildspec: prod-buildspec.yaml
+        Location: !Ref GitHubRepoURL
+        BuildSpec: prod-buildspec.yaml
       Environment:
+        Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:4.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Ref ProjectName
+      RoleArn: arn:aws:iam::071406896486:role/service-role/AWSCodePipelineServiceRole-us-east-1-serverless-template
+      ArtifactStore:
+        Type: S3
+        Location: codepipeline-us-east-1-720914620335
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              Configuration:
+                Owner: !Select [3, !Split ["/", !Ref GitHubRepoURL]]
+                Repo: !Select [4, !Split ["/", !Ref GitHubRepoURL]]
+                Branch: master
+                OAuthToken: !Ref GitHubToken
+              OutputArtifacts:
+                - Name: SourceArtifact
+              RunOrder: 1
+        - Name: DeployStaging
+          Actions:
+            - Name: UnitTest
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              InputArtifacts:
+                - Name: SourceArtifact
+              Configuration:
+                ProjectName: !Ref CodeBuildProjectUnitTest
+              RunOrder: 1
+            - Name: BuildDeployStaging
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              InputArtifacts:
+                - Name: SourceArtifact
+              Configuration:
+                ProjectName: !Ref CodeBuildProjectBuildDeployStaging
+              RunOrder: 2
+            - Name: IntegTest
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              InputArtifacts:
+                - Name: SourceArtifact
+              Configuration:
+                ProjectName: !Ref CodeBuildProjectIntegTest
+              RunOrder: 3
+        - Name: ManualApproval
+          Actions:
+            - Name: ManualApprovalAction
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Version: 1
+                Provider: Manual
+              RunOrder: 1
+        - Name: DeployProd
+          Actions:
+            - Name: BuildDeployProd
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              InputArtifacts:
+                - Name: SourceArtifact
+              Configuration:
+                ProjectName: !Ref CodeBuildProjectBuildDeployProd
+              RunOrder: 1
+  GitHubToken:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: GitHubToken
+      GenerateSecretString:
+        SecretStringTemplate: '{"GitHubToken": "<substitute_here>"}'
+        GenerateStringKey: GitHubToken
+        PasswordLength: 30
+        ExcludeCharacters: '"@/\'
