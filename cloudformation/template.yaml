@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for AWS CodeBuild and AWS CodePipeline resources
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: The base project name
+    Default: pet
+
+  CodeBuildProjectUnitTest:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${ProjectName}-unit-test'
+      Description: CodeBuild project for unit tests
+      Source:
+        Type: GITHUB
+        Location: !Sub 'https://github.com/jaystu/${ProjectName}'
+        Buildspec: unit-test-buildspec.yaml
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+      ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
+      
+Resources:
+  CodeBuildProjectIntegTest:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${ProjectName}-integ-test'
+      Description: CodeBuild project for integration tests
+      Source:
+        Type: GITHUB
+        Location: !Sub 'https://github.com/jaystu/${ProjectName}'
+        Buildspec: integration-test-buildspec.yaml
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+      ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
+
+  CodeBuildProjectBuildDeployStaging:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${ProjectName}-build-deploy-staging'
+      Description: CodeBuild project for building and deploying to staging
+      Source:
+        Type: GITHUB
+        Location: !Sub 'https://github.com/jaystu/${ProjectName}'
+        Buildspec: staging-buildspec.yaml
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+      ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
+
+  CodeBuildProjectBuildDeployProd:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${ProjectName}-build-deploy-prod'
+      Description: CodeBuild project for building and deploying to production
+      Source:
+        Type: GITHUB
+        Location: !Sub 'https://github.com/jaystu/${ProjectName}'
+        Buildspec: prod-buildspec.yaml
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+      ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
