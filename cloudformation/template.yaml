@@ -4,10 +4,15 @@ Parameters:
   ProjectName:
     Type: String
     Description: The base project name
-    Default: pet
   GitHubRepoURL:
     Type: String
-    Default: https://github.com/jaystu/pet
+  # *** This value must always be passed in when creating / updating stack
+  # "NoEcho" is set to true, for security, so token won't be visible when examining the resulting stack
+  GitHubOAuthToken:
+    Type: String
+    NoEcho: true
+    AllowedPattern: 'ghp_[A-Za-z0-9]*'
+    
 Resources:
   CodeBuildProjectUnitTest:
     Type: AWS::CodeBuild::Project
@@ -93,8 +98,8 @@ Resources:
               Configuration:
                 Owner: !Select [3, !Split ["/", !Ref GitHubRepoURL]]
                 Repo: !Select [4, !Split ["/", !Ref GitHubRepoURL]]
-                Branch: master
-                OAuthToken: !Ref GitHubToken
+                Branch: main
+                OAuthToken: !Ref GitHubOAuthToken
               OutputArtifacts:
                 - Name: SourceArtifact
               RunOrder: 1
@@ -155,12 +160,3 @@ Resources:
               Configuration:
                 ProjectName: !Ref CodeBuildProjectBuildDeployProd
               RunOrder: 1
-  GitHubToken:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: GitHubToken
-      GenerateSecretString:
-        SecretStringTemplate: '{"GitHubToken": "<substitute_here>"}'
-        GenerateStringKey: GitHubToken
-        PasswordLength: 30
-        ExcludeCharacters: '"@/\'
