@@ -28,7 +28,7 @@ Resources:
       Environment:
         Type: ARM_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+        Image: aws/codebuild/amazonlinux2-aarch64-standard:2.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
   CodeBuildProjectIntegTest:
     Type: AWS::CodeBuild::Project
@@ -44,7 +44,7 @@ Resources:
       Environment:
         Type: ARM_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+        Image: aws/codebuild/amazonlinux2-aarch64-standard:2.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
   CodeBuildProjectBuildDeployStaging:
     Type: AWS::CodeBuild::Project
@@ -60,7 +60,7 @@ Resources:
       Environment:
         Type: ARM_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+        Image: aws/codebuild/amazonlinux2-aarch64-standard:2.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
   CodeBuildProjectBuildDeployProd:
     Type: AWS::CodeBuild::Project
@@ -76,9 +76,22 @@ Resources:
       Environment:
         Type: ARM_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+        Image: aws/codebuild/amazonlinux2-aarch64-standard:2.0
       ServiceRole: arn:aws:iam::071406896486:role/serverless-code-build-role
-  Pipeline:
+  GithubWebhook:
+    Type: 'AWS::CodePipeline::Webhook'
+    Properties:
+      Authentication: GITHUB_HMAC
+      AuthenticationConfiguration:
+        SecretToken: !Ref GitHubOAuthToken
+      RegisterWithThirdParty: 'true'
+      Filters:
+      - JsonPath: "$.ref"
+        MatchEquals: refs/heads/{Branch}
+      TargetPipeline: !Ref CodePipeline
+      TargetAction: GitPush
+      TargetPipelineVersion: !GetAtt CodePipeline.Version
+  CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
       Name: !Ref ProjectName
@@ -89,7 +102,7 @@ Resources:
       Stages:
         - Name: Source
           Actions:
-            - Name: SourceAction
+            - Name: GitPush
               ActionTypeId:
                 Category: Source
                 Owner: ThirdParty
